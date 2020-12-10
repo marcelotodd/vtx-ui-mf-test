@@ -1,62 +1,64 @@
 import * as React from "react";
+import { CrossSpaEvents } from "@vertexinc/vtx-ui-cross-spa-events";
+import { IconType } from "@vertexinc/vtx-ui-cross-spa-events/dist/schemas/sideNavigation/iconTypes";
+import {
+  IFirstLevelMenuItem,
+  IOneOrManyMenuItems,
+} from "@vertexinc/vtx-ui-cross-spa-events/dist/schemas/sideNavigation/sideNavTypesV1";
 
 interface OwnProps {
   name: string;
   loginUser: any;
 }
 
-interface ComponentState {
-  requests: number;
-}
+const menu: IFirstLevelMenuItem[] = [
+  {
+    title: "Home",
+    dataTestId: "home",
+    icon: {
+      typeName: "enterprise",
+    },
+    children: [
+      {
+        title: "Bad route",
+        linkUrl: "/ui/blah",
+        dataTestId: "home/bad-route",
+      },
+    ],
+  },
+  {
+    title: "Settings",
+    dataTestId: "settings",
+    icon: {
+      typeName: "setting",
+    },
+    children: [
+      {
+        title: "Calc Config",
+        linkUrl: "/ui/calc-config",
+        dataTestId: "settings/calc-config",
+      },
+    ],
+  },
+];
 
-export class Root extends React.Component<OwnProps, ComponentState> {
-  private userInfo: any;
-
-  constructor(props: OwnProps) {
-    super(props);
-    this.state = { requests: 0 };
-  }
-
-  componentDidUpdate(prevProps: OwnProps, prevState: ComponentState) {
-    if (prevState.requests != this.state.requests) {
-      this.setState({ requests: 0 });
-    }
-  }
-
+export class Root extends React.Component<OwnProps> {
   render() {
     const { name, loginUser } = this.props;
 
+    setTimeout(() => {
+      const e = new CrossSpaEvents();
+      e.emit("sideNavigation", { menu, schemaVersion: "v1" });
+    }, 1000);
+
     return (
-      <div className="vtx-ui-mf-test">
+      <div style={{ padding: "20px" }}>
         <h2>{name} microfrontend</h2>
         {!loginUser ? (
           <div>No user provided. Not good!</div>
         ) : (
           <pre>{JSON.stringify(loginUser, null, 2)}</pre>
         )}
-        <div style={{ marginTop: "20px" }}>
-          <button
-            type="button"
-            onClick={() => {
-              const that = this;
-              fetch("http://kopas0036:9000/oseries-auth/user", {
-                headers: {
-                  Authorization: `Bearer ${loginUser.access_token}`,
-                },
-              })
-                .then((response) => response.json())
-                .then((userInfo) => {
-                  that.userInfo = userInfo;
-                  that.setState({ requests: 1 });
-                });
-            }}
-          >
-            Get User Info
-          </button>
-          {this.userInfo != null && (
-            <pre>{JSON.stringify(this.userInfo, null, 2)}</pre>
-          )}
-        </div>
       </div>
     );
   }

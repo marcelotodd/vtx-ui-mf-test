@@ -20,6 +20,13 @@ module.exports = (webpackConfigEnv) => {
         jsonpFunction: `webpackJsonp_vtx-ui-mf-test`,
       },
       externals: ["single-spa"],
+      devServer: {
+        https: true,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+        disableHostCheck: true,
+      },
     },
     {
       // modify the webpack config however you'd like to by adding to this object
