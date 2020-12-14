@@ -1,10 +1,7 @@
 import * as React from "react";
 import { CrossSpaEvents } from "@vertexinc/vtx-ui-cross-spa-events";
-import { IconType } from "@vertexinc/vtx-ui-cross-spa-events/dist/schemas/sideNavigation/iconTypes";
-import {
-  IFirstLevelMenuItem,
-  IOneOrManyMenuItems,
-} from "@vertexinc/vtx-ui-cross-spa-events/dist/schemas/sideNavigation/sideNavTypesV1";
+import { VtxSelect } from "@vertexinc/vtx-ui-react-component-library";
+import { IFirstLevelMenuItem } from "@vertexinc/vtx-ui-cross-spa-events/dist/schemas/sideNavigation/sideNavTypesV1";
 
 interface OwnProps {
   name: string;
@@ -68,6 +65,14 @@ export class Root extends React.Component<OwnProps> {
         >
           Update Menu
         </button>
+        <VtxSelect size="middle" data-automation-class="test">
+          <VtxSelect.Option value="jack">Jack</VtxSelect.Option>
+          <VtxSelect.Option value="lucy">Lucy</VtxSelect.Option>
+          <VtxSelect.Option value="disabled" disabled>
+            Disabled
+          </VtxSelect.Option>
+          <VtxSelect.Option value="Yiminghe">yiminghe</VtxSelect.Option>
+        </VtxSelect>
       </div>
     );
   }
