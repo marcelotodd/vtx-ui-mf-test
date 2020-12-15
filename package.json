@@ -1,4 +1,12 @@
 {
+  "name": "@vertexinc/vtx-ui-mf-test",
+  "private": true,
+  "publishConfig": {
+    "registry": "https://binrepo.vtxdev.net/artifactory/api/npm/vtx-ui-local/"
+  },
+  "version": "1.0.0",
+  "license": "MIT",
+  "main": "vtx-ui-mf-test.js",
   "scripts": {
     "start": "webpack-dev-server --port 9005",
     "build": "webpack --mode=production",

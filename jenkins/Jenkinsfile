@@ -1,0 +1,197 @@
+pipeline {
+    agent {
+        dockerfile {
+            filename 'Dockerfile'
+            dir 'jenkins/'
+            label 'MUTILDPL05'
+            args '''
+                -v /var/lib/package-cache/.npm:/.npm:rw,z
+            '''
+        }
+    }
+    environment {
+        GIT_REPO_NAME = ""
+        GIT_TRUNK_BRANCH = "master"
+
+        S3_BUCKET = "vtx-cloudfront-1"
+        S3_BUCKET_FOLDER = "development"
+        S3_REGION_KEY = "us-east-1"
+        S3_URL = "https://dev-app.vtxdev.net/ui/"
+
+        ARTIFACTORY_SERVER_ID = "Artifactory-CICD-Cloud"
+        ARTIFACTORY_SERVER_URL = "https://binrepo.vtxdev.net/artifactory"
+        ARTIFACTORY_SERVER_CREDENTIAL_ID = "jenkins-artifactory-credentials"
+
+        NPM_VERSION = "patch"  //versions vX.X.HERE
+
+        VTX_UI_IMPORT_MAPPER_URL = "http://10.7.11.167:5000/import-map.json"
+
+        ARTIFACTORY_NPM_REGISTRY = "https://binrepo.vtxdev.net/artifactory/api/npm/vtx-ui/"
+        ARTIFACTORY_BOT_EMAIL = "marcelo.todd@vertexinc.com"
+    }
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '100', artifactNumToKeepStr: '20'))
+        timestamps()
+        timeout(time: 35, unit: 'MINUTES')
+        parallelsAlwaysFailFast()
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    //Create NPMRC to allow access to vertexinc npm private registry
+                    withCredentials([string(credentialsId: 'CICD_NPM_AUTH_TOKEN', variable: 'CICD_NPM_AUTH_TOKEN'), string(credentialsId: 'CICD_BOT_ARTIFACTORY_AUTH_TOKEN', variable: 'CICD_BOT_ARTIFACTORY_AUTH_TOKEN')]) {
+                        sh "npm config set registry ${ARTIFACTORY_NPM_REGISTRY}"
+                        sh "echo '//https://binrepo.vtxdev.net/artifactory/vtx-ui/:_authToken=${CICD_BOT_ARTIFACTORY_AUTH_TOKEN}' > .npmrc"
+                    }
+
+                    //Extract the Repo Name from the Repository URL
+                    GIT_REPO_NAME = GIT_URL.replaceFirst(/^.*\/([^\/]+?).git$/, '$1')
+                    println("GIT_REPO_NAME = ${GIT_REPO_NAME}")
+
+                    rtNpmDeployer (
+                        id: 'npmDeployerId',
+                        serverId: 'Artifactory-CICD-Cloud',
+                        repo: 'vtx-ui'
+                    )
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                //Install NPM components and wait-on
+                sh "npm install"
+                sh "npx cypress install"
+
+                //Run NPM Build
+                sh 'npm run build'
+            }
+        }
+        stage('Test') {
+            when {
+                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
+            }
+            steps {
+                sh 'npm run test'
+            }
+        }
+        stage('Lint') {
+            when {
+                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
+            }
+            steps {
+                sh 'npm run lint'
+            }
+        }
+        stage('Start local server') {
+            when {
+                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
+            }
+            steps {
+                // start local server in the background
+                // we will shut it down in "post" command block
+            }
+        }
+        stage('Cypress'){
+            when {
+                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
+            }
+            parallel {
+                stage('Start local server') {
+                    steps {
+                        sh returnStatus: true, script: "npm run start"
+                    }
+                }
+                stage('Run Cypress') {
+                    steps {
+                        sh 'npm run wait'
+                        sh 'npm run cypress:run'
+                        sh 'npm run cypress:run:e2e'
+                    }
+                }
+                stage('Run Cypress E2E') {
+                    steps {
+                        sh 'npm run wait'
+                        sh 'npm run cypress:run:e2e'
+                    }
+                }
+            }
+            post {
+                always {
+                    sh 'killall node'
+                }
+            }
+        }
+        stage('Publish Artifact') {
+            when {
+                beforeAgent true
+                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
+            }
+            steps {
+                println("Publish files to artifactory")
+                //Artifactory Server information needed to publish Artifacts
+				rtNpmPublish (
+                    deployerId: 'npmDeployerId',
+                    // Jenkins spawns a new java process during this step's execution.
+                    // You have the option of passing any java args to this new process.
+                    javaArgs: '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005'
+                )
+            }
+        }
+        stage('Save Tag') {
+            when {
+                beforeAgent true
+                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
+            }
+            steps {
+                println("Save Tag ")
+            }
+        }
+        stage('Deployment') {
+            when {
+                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
+            }
+            steps {
+                //Create the .aws/configuration file to authenticate to S3
+                withCredentials([usernamePassword(credentialsId: 'cicd-aws-access-key', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                    sh "aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}"
+                    sh "aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}"
+                    sh "aws configure set default.region ${S3_REGION_KEY}"
+                }
+
+                //Copy all files produced from npm run build output folder ./dist to S3 Bucket
+                dir ('dist') {
+                    sh "aws s3 cp ./ s3://${S3_BUCKET}/${S3_BUCKET_FOLDER}/ui/${GIT_REPO_NAME}/ --recursive --cache-control 'max-age=31556952'"
+                }
+                // Read S3 bucket after copy to verify files were copied
+                sh "aws s3 ls s3://${S3_BUCKET}/${S3_BUCKET_FOLDER}/ui/${GIT_REPO_NAME}/"
+
+                println("S3 Deployment Location - ${S3_URL}${GIT_REPO_NAME}/${GIT_REPO_NAME}.js ")
+            }
+        }
+        stage('Import Map Deployer') {
+            when {
+                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
+            }
+            steps {
+                //Write temporary importmap.json file to file so it can be passed to Import Map Deployer below
+                writeFile file: 'importmap.json', text: """{
+                    \"imports\": {
+                        \"${GIT_REPO_NAME}\": \"${S3_URL}${GIT_REPO_NAME}/${GIT_REPO_NAME}.js\"
+                    }
+                }"""
+
+                //Call Import Map Deployer to update JSON hosted on S3
+                withCredentials([usernamePassword(credentialsId: 'cicd-platform-ui-imd-credentials', passwordVariable: 'username', usernameVariable: 'password')]) {
+                    sh """curl -X PATCH ${VTX_UI_IMPORT_MAPPER_URL} -u username:password --data @importmap.json -H 'Accept: application/json' -H 'Content-Type: application/json' """
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo "Job completed"
+        }
+    }
+}
+
