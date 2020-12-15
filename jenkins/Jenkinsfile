@@ -32,7 +32,7 @@ pipeline {
     options {
         buildDiscarder(logRotator(numToKeepStr: '100', artifactNumToKeepStr: '20'))
         timestamps()
-        timeout(time: 15, unit: 'MINUTES')
+        timeout(time: 35, unit: 'MINUTES')
         parallelsAlwaysFailFast()
     }
     stages {
@@ -90,8 +90,6 @@ pipeline {
             steps {
                 // start local server in the background
                 // we will shut it down in "post" command block
-                sh 'nohup npm run start &'
-                sh 'npm run wait'
             }
         }
         stage('Cypress'){
@@ -99,15 +97,28 @@ pipeline {
                 expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
             }
             parallel {
+                stage('Start local server') {
+                    steps {
+                        sh returnStatus: true, script: "npm run start"
+                    }
+                }
                 stage('Run Cypress') {
                     steps {
+                        sh 'npm run wait'
                         sh 'npm run cypress:run'
+                        sh 'npm run cypress:run:e2e'
                     }
                 }
                 stage('Run Cypress E2E') {
                     steps {
+                        sh 'npm run wait'
                         sh 'npm run cypress:run:e2e'
                     }
+                }
+            }
+            post {
+                always {
+                    sh 'killall node'
                 }
             }
         }
@@ -179,8 +190,8 @@ pipeline {
     }
     post {
         always {
-            sh 'killall node'
             echo "Job completed"
         }
     }
 }
+
