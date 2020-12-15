@@ -46,19 +46,28 @@ export class Root extends React.Component<OwnProps> {
   render() {
     const { name, loginUser } = this.props;
 
-    setTimeout(() => {
+    const publishMenu = () => {
       const e = new CrossSpaEvents();
       e.emit("sideNavigation", { menu, schemaVersion: "v1" });
-    }, 1000);
+    };
 
     return (
       <div style={{ padding: "20px" }}>
-        <h2>{name} microfrontend</h2>
-        {!loginUser ? (
-          <div>No user provided. Not good!</div>
-        ) : (
-          <pre>{JSON.stringify(loginUser, null, 2)}</pre>
-        )}
+        <p>
+          <h2>{name} microfrontend</h2>
+          {!loginUser ? (
+            <div>No user provided. Not good!</div>
+          ) : (
+            <pre>{JSON.stringify(loginUser, null, 2)}</pre>
+          )}
+        </p>
+        <button
+          data-testid="test-app-publish-menu"
+          type="button"
+          onClick={publishMenu}
+        >
+          Update Menu
+        </button>
       </div>
     );
   }
