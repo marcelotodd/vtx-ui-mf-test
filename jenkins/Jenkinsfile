@@ -10,61 +10,26 @@ pipeline {
         }
     }
     environment {
-        GIT_REPO_NAME = ""
+        NODE_ENV = "development"
         GIT_TRUNK_BRANCH = "master"
-
         S3_BUCKET = "vtx-cloudfront-1"
-        S3_BUCKET_FOLDER = "development"
         S3_REGION_KEY = "us-east-1"
-        S3_URL = "https://dev-app.vtxdev.net/ui/"
-
-        ARTIFACTORY_SERVER_ID = "Artifactory-CICD-Cloud"
-        ARTIFACTORY_SERVER_URL = "https://binrepo.vtxdev.net/artifactory"
-        ARTIFACTORY_SERVER_CREDENTIAL_ID = "jenkins-artifactory-credentials"
-
-        NPM_VERSION = "patch"  //versions vX.X.HERE
-
-        VTX_UI_IMPORT_MAPPER_URL = "http://10.7.11.167:5000/import-map.json"
-
-        ARTIFACTORY_NPM_REGISTRY = "https://binrepo.vtxdev.net/artifactory/api/npm/vtx-ui/"
-        ARTIFACTORY_BOT_EMAIL = "marcelo.todd@vertexinc.com"
     }
     options {
         buildDiscarder(logRotator(numToKeepStr: '100', artifactNumToKeepStr: '20'))
         timestamps()
-        timeout(time: 35, unit: 'MINUTES')
+        timeout(time: 20, unit: 'MINUTES')
         parallelsAlwaysFailFast()
     }
     stages {
-        stage('Checkout') {
-            steps {
-                script {
-                    //Create NPMRC to allow access to vertexinc npm private registry
-                    withCredentials([string(credentialsId: 'CICD_NPM_AUTH_TOKEN', variable: 'CICD_NPM_AUTH_TOKEN'), string(credentialsId: 'CICD_BOT_ARTIFACTORY_AUTH_TOKEN', variable: 'CICD_BOT_ARTIFACTORY_AUTH_TOKEN')]) {
-                        sh "npm config set registry ${ARTIFACTORY_NPM_REGISTRY}"
-                        sh "echo '//https://binrepo.vtxdev.net/artifactory/vtx-ui/:_authToken=${CICD_BOT_ARTIFACTORY_AUTH_TOKEN}' > .npmrc"
-                    }
-
-                    //Extract the Repo Name from the Repository URL
-                    GIT_REPO_NAME = GIT_URL.replaceFirst(/^.*\/([^\/]+?).git$/, '$1')
-                    println("GIT_REPO_NAME = ${GIT_REPO_NAME}")
-
-                    rtNpmDeployer (
-                        id: 'npmDeployerId',
-                        serverId: 'Artifactory-CICD-Cloud',
-                        repo: 'vtx-ui'
-                    )
-                }
-            }
-        }
         stage('Build') {
             steps {
-                //Install NPM components and wait-on
+                //Install NPM components
                 sh "npm install"
                 sh "npx cypress install"
 
                 //Run NPM Build
-                sh 'npm run build'
+                sh "npm run build:${NODE_ENV}"
             }
         }
         stage('Test') {
@@ -83,107 +48,56 @@ pipeline {
                 sh 'npm run lint'
             }
         }
-        stage('Start local server') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
-            }
-            steps {
-                // start local server in the background
-                // we will shut it down in "post" command block
-            }
-        }
-        stage('Cypress'){
+        stage('Cypress') {
             when {
                 expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
             }
             parallel {
                 stage('Start local server') {
                     steps {
-                        sh returnStatus: true, script: "npm run start"
+                        sh returnStatus: true, script: "npm run start:${NODE_ENV}"
                     }
                 }
-                stage('Run Cypress') {
+                stage('Run Cypress tests') {
                     steps {
                         sh 'npm run wait'
                         sh 'npm run cypress:run'
                         sh 'npm run cypress:run:e2e'
-                    }
-                }
-                stage('Run Cypress E2E') {
-                    steps {
-                        sh 'npm run wait'
-                        sh 'npm run cypress:run:e2e'
+                        sh 'killall node'
                     }
                 }
             }
-            post {
-                always {
-                    sh 'killall node'
-                }
-            }
         }
-        stage('Publish Artifact') {
-            when {
-                beforeAgent true
-                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
-            }
-            steps {
-                println("Publish files to artifactory")
-                //Artifactory Server information needed to publish Artifacts
-				rtNpmPublish (
-                    deployerId: 'npmDeployerId',
-                    // Jenkins spawns a new java process during this step's execution.
-                    // You have the option of passing any java args to this new process.
-                    javaArgs: '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005'
-                )
-            }
-        }
-        stage('Save Tag') {
-            when {
-                beforeAgent true
-                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
-            }
-            steps {
-                println("Save Tag ")
-            }
-        }
-        stage('Deployment') {
+        stage('Deploy') {
             when {
                 expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
             }
             steps {
-                //Create the .aws/configuration file to authenticate to S3
-                withCredentials([usernamePassword(credentialsId: 'cicd-aws-access-key', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
-                    sh "aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}"
-                    sh "aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}"
-                    sh "aws configure set default.region ${S3_REGION_KEY}"
-                }
-
-                //Copy all files produced from npm run build output folder ./dist to S3 Bucket
-                dir ('dist') {
-                    sh "aws s3 cp ./ s3://${S3_BUCKET}/${S3_BUCKET_FOLDER}/ui/${GIT_REPO_NAME}/ --recursive --cache-control 'max-age=31556952'"
-                }
-                // Read S3 bucket after copy to verify files were copied
-                sh "aws s3 ls s3://${S3_BUCKET}/${S3_BUCKET_FOLDER}/ui/${GIT_REPO_NAME}/"
-
-                println("S3 Deployment Location - ${S3_URL}${GIT_REPO_NAME}/${GIT_REPO_NAME}.js ")
-            }
-        }
-        stage('Import Map Deployer') {
-            when {
-                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH ) }
-            }
-            steps {
-                //Write temporary importmap.json file to file so it can be passed to Import Map Deployer below
-                writeFile file: 'importmap.json', text: """{
-                    \"imports\": {
-                        \"${GIT_REPO_NAME}\": \"${S3_URL}${GIT_REPO_NAME}/${GIT_REPO_NAME}.js\"
+                script {
+                    echo "Current workspace is ${env.WORKSPACE}"
+                    
+                    //Create the .aws/configuration file to authenticate to S3	
+                    withCredentials([usernamePassword(credentialsId: 'cicd-aws-access-key', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {	
+                        sh "aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}"	
+                        sh "aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}"	
+                        sh "aws configure set default.region ${S3_REGION_KEY}"	
                     }
-                }"""
+                    println "env.GIT_COMMIT=${env.GIT_COMMIT}"
+                    println "S3_BUCKET=${S3_BUCKET}"
+                    sh "export ${NODE_ENV}"
+                    sh "printenv NODE_ENV"
 
-                //Call Import Map Deployer to update JSON hosted on S3
-                withCredentials([usernamePassword(credentialsId: 'cicd-platform-ui-imd-credentials', passwordVariable: 'username', usernameVariable: 'password')]) {
-                    sh """curl -X PATCH ${VTX_UI_IMPORT_MAPPER_URL} -u username:password --data @importmap.json -H 'Accept: application/json' -H 'Content-Type: application/json' """
+                    withCredentials([usernamePassword(credentialsId: 'cicd-platform-ui-imd-credentials', passwordVariable: 'IMD_PASSWORD', usernameVariable: 'IMD_USERNAME')]) {
+                        def deployScript = """npm_config_registry=https://binrepo.vtxdev.net/artifactory/api/npm/vtx-ui npx @vertexinc/vtx-ui-tools-deployment deployMicroFrontend --gitCommitSha=${env.GIT_COMMIT} --importMapUsername=${IMD_USERNAME} --importMapPassword=${IMD_PASSWORD} --s3BucketName=${S3_BUCKET}""";
+                        def status = sh(returnStatus: true, script: "${deployScript} > deployment_log.txt")
+                        def output = readFile('deployment_log.txt').trim()
+                        println output
+                        println "========== Status Code: ${status} ================"
+                        if (status != 0) {
+                            println "FAILED. Look above the logs to see the source of the error"
+                            currentBuild.result = 'FAILED'
+                        }
+                    }
                 }
             }
         }
