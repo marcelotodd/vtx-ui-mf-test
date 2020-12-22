@@ -16,7 +16,7 @@ module.exports = (webpackConfigEnv) => {
       output: {
         filename: `vtx-ui-mf-test.js`,
         libraryTarget: "system",
-        path: path.resolve(process.cwd(), "build"),
+        path: path.resolve(process.cwd(), "dist"),
         jsonpFunction: `webpackJsonp_vtx-ui-mf-test`,
       },
       externals: ["single-spa"],
