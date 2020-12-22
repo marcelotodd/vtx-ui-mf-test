@@ -21,10 +21,11 @@
     "cypress:run:e2e": "echo 'no e2e tests yet'",
     "cypress:run": "echo 'no tests yet'",
     "type-check": "tsc --noEmit",
+    "wait": "wait-on https://localhost:9005",
     "analyze": "webpack --mode=production --env.analyze=true",
     "lint": "eslint src --ext js,ts,tsx",
     "format": "prettier --write './**'",
-    "test": "cross-env BABEL_ENV=test jest",
+    "test": "cross-env BABEL_ENV=test jest --passWithNoTests",
     "watch-tests": "cross-env BABEL_ENV=test jest --watch",
     "coverage": "cross-env BABEL_ENV=test jest --coverage"
   },
