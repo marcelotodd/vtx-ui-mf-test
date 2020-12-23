@@ -1,10 +1,6 @@
 {
   "name": "@vertexinc/vtx-ui-mf-test",
   "private": true,
-  "publishConfig": {
-    "registry": "https://binrepo.vtxdev.net/artifactory/api/npm/vtx-ui-local/"
-  },
-  "version": "1.0.0",
   "license": "MIT",
   "main": "dist/vtx-ui-mf-test.js",
   "scripts": {
@@ -30,11 +26,6 @@
     "coverage": "cross-env BABEL_ENV=test jest --coverage"
   },
   "dependencies": {
-    "@types/jest": "^25.2.1",
-    "@types/react": "^16.9.32",
-    "@types/react-dom": "^16.9.6",
-    "@types/systemjs": "^6.1.0",
-    "@types/webpack-env": "^1.15.1",
     "@vertexinc/vtx-ui-cross-spa-events": "^1.0.0",
     "react": "^16.12.0",
     "react-dom": "^16.12.0"
@@ -48,6 +39,10 @@
     "@testing-library/jest-dom": "^5.5.0",
     "@testing-library/react": "^9.4.0",
     "@types/systemjs": "^6.1.0",
+    "@types/jest": "^25.2.1",
+    "@types/react": "^16.9.32",
+    "@types/react-dom": "^16.9.6",
+    "@types/webpack-env": "^1.15.1",
     "babel-eslint": "^11.0.0-beta.2",
     "babel-jest": "^24.9.0",
     "concurrently": "^5.0.1",
