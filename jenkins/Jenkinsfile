@@ -25,7 +25,7 @@ pipeline {
         stage('Build') {
             steps {
                 //Install NPM components
-                sh "npm install"
+                sh "npm ci"
                 sh "npx cypress install"
 
                 //Run NPM Build
