@@ -3,7 +3,7 @@ pipeline {
         dockerfile {
             filename 'Dockerfile'
             dir 'jenkins/'
-            label 'agent && linux
+            label 'agent && linux'
             args '''
                 -v /var/lib/package-cache/.npm:/.npm:rw,z
             '''
