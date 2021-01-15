@@ -43,6 +43,10 @@ const menu: IFirstLevelMenuItem[] = [
 ];
 
 export class Root extends React.Component<OwnProps> {
+  componentDidMount() {
+    console.log("vtx-ui-mf-test mounted");
+  }
+
   render() {
     const { name, loginUser } = this.props;
 
