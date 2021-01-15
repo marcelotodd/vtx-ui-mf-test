@@ -43,19 +43,22 @@ const menu: IFirstLevelMenuItem[] = [
   },
 ];
 
+const publishMenu = () => {
+  const e = new CrossSpaEvents();
+  // eslint-disable-next-line no-console
+  console.log("vtx-ui-mf-test emitting sideNavigation event...");
+  e.emit("sideNavigation", { menu, schemaVersion: "v1" });
+};
+
 export class Root extends React.Component<OwnProps> {
   componentDidMount() {
-    // eslint-disable-next-line no-console
-    console.log("vtx-ui-mf-test mounted");
+    if (localStorage.getItem("vtx-ui-mf-test:load-menu-on-mount") === "true") {
+      publishMenu();
+    }
   }
 
   render() {
     const { name, loginUser } = this.props;
-
-    const publishMenu = () => {
-      const e = new CrossSpaEvents();
-      e.emit("sideNavigation", { menu, schemaVersion: "v1" });
-    };
 
     const updateHelpLinkUrl = () => {
       const e = new CrossSpaEvents();
