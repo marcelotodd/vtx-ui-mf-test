@@ -1,10 +1,6 @@
 import * as React from "react";
 import { CrossSpaEvents } from "@vertexinc/vtx-ui-cross-spa-events";
-import { IconType } from "@vertexinc/vtx-ui-cross-spa-events/dist/schemas/sideNavigation/iconTypes";
-import {
-  IFirstLevelMenuItem,
-  IOneOrManyMenuItems,
-} from "@vertexinc/vtx-ui-cross-spa-events/dist/schemas/sideNavigation/sideNavTypesV1";
+import { IFirstLevelMenuItem } from "@vertexinc/vtx-ui-cross-spa-events/dist/schemas/sideNavigation/sideNavTypesV1";
 
 interface OwnProps {
   name: string;
@@ -23,6 +19,11 @@ const menu: IFirstLevelMenuItem[] = [
         title: "Bad route",
         linkUrl: "/ui/blah",
         dataTestId: "home/bad-route",
+      },
+      {
+        title: "Sub route",
+        linkUrl: "/ui/test/blah",
+        dataTestId: "home/sub-route",
       },
     ],
   },
@@ -56,22 +57,36 @@ export class Root extends React.Component<OwnProps> {
       e.emit("sideNavigation", { menu, schemaVersion: "v1" });
     };
 
+    const updateHelpLinkUrl = () => {
+      const e = new CrossSpaEvents();
+      e.emit("helpLinkUrlChange", {
+        schemaVersion: "v1",
+        url: "https://vertexinc.custhelp.com/vtx-ui-mf-test",
+      });
+    };
+
     return (
       <div style={{ padding: "20px" }}>
-        <p>
-          <h2>{name} microfrontend</h2>
-          {!loginUser ? (
-            <div>No user provided. Not good!</div>
-          ) : (
-            <pre>{JSON.stringify(loginUser, null, 2)}</pre>
-          )}
-        </p>
+        <h2>{name} microfrontend</h2>
+        {!loginUser ? (
+          <div>No user provided. Not good!</div>
+        ) : (
+          <pre>{JSON.stringify(loginUser, null, 2)}</pre>
+        )}
         <button
           data-testid="test-app-publish-menu"
           type="button"
           onClick={publishMenu}
         >
           Update Menu
+        </button>
+        <button
+          data-testid="test-app-update-help-link-url"
+          type="button"
+          onClick={updateHelpLinkUrl}
+          style={{ marginLeft: "10px" }}
+        >
+          Change Help Link URL
         </button>
       </div>
     );
