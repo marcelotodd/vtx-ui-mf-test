@@ -4,7 +4,7 @@ import { IFirstLevelMenuItem } from "@vertexinc/vtx-ui-cross-spa-events/dist/sch
 
 interface OwnProps {
   name: string;
-  loginUser: any;
+  loginUser?: any;
 }
 
 const menu: IFirstLevelMenuItem[] = [
