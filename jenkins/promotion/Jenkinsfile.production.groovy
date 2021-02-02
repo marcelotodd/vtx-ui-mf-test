@@ -10,9 +10,9 @@ pipeline {
         }
     }
     environment {
-        NODE_ENV = "development"
+        NODE_ENV = "production"
         GIT_TRUNK_BRANCH = "master"
-        S3_BUCKET = "vtx-cloudfront-1"
+        S3_BUCKET = "vtx-cloudfront-production"
         S3_REGION_KEY = "us-east-1"
     }
     options {
@@ -29,25 +29,16 @@ pipeline {
             }
         }
         stage('Test') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }
             steps {
                 sh 'npm run test'
             }
         }
         stage('Lint') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }
             steps {
                 sh 'npm run lint'
             }
         }
         stage('Cypress mocked API tests') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }      
             parallel {
                 stage('Start local server') {
                     steps {
@@ -63,44 +54,15 @@ pipeline {
                 }
             }
         }
-        stage('Cypress E2E tests') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }      
-            parallel {
-                stage('Start local server') {
-                    steps {
-                        sh returnStatus: true, script: "npm run start:${NODE_ENV}"
-                    }
-                }
-                stage('Run Cypress tests') {
-                    steps {
-                        sh 'npm run wait'
-                        sh 'npm run cypress:run:e2e'
-                        sh 'killall node'
-                    }
-                }
-            }
-        }
         stage('Build') {
             steps {
                 sh "npm run build:${NODE_ENV}"
             }
         }
         stage('Deploy') {
-            when {
-                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }
             steps {
                 script {
                     echo "Current workspace is ${env.WORKSPACE}"
-                    
-                    //Create the .aws/configuration file to authenticate to S3	
-                    withCredentials([usernamePassword(credentialsId: 'cicd-aws-access-key', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {	
-                        sh "aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}"	
-                        sh "aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}"	
-                        sh "aws configure set default.region ${S3_REGION_KEY}"	
-                    }
                     println "env.GIT_COMMIT=${env.GIT_COMMIT}"
                     println "S3_BUCKET=${S3_BUCKET}"
                     sh "export ${NODE_ENV}"

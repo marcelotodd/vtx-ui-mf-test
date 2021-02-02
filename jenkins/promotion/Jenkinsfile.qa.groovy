@@ -10,7 +10,7 @@ pipeline {
         }
     }
     environment {
-        NODE_ENV = "development"
+        NODE_ENV = "qa"
         GIT_TRUNK_BRANCH = "master"
         S3_BUCKET = "vtx-cloudfront-1"
         S3_REGION_KEY = "us-east-1"
@@ -29,25 +29,16 @@ pipeline {
             }
         }
         stage('Test') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }
             steps {
                 sh 'npm run test'
             }
         }
         stage('Lint') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }
             steps {
                 sh 'npm run lint'
             }
         }
         stage('Cypress mocked API tests') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }      
             parallel {
                 stage('Start local server') {
                     steps {
@@ -64,9 +55,6 @@ pipeline {
             }
         }
         stage('Cypress E2E tests') {
-            when {
-                expression { !env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }      
             parallel {
                 stage('Start local server') {
                     steps {
@@ -88,9 +76,6 @@ pipeline {
             }
         }
         stage('Deploy') {
-            when {
-                expression { env.GIT_BRANCH.equals(env.GIT_TRUNK_BRANCH) }
-            }
             steps {
                 script {
                     echo "Current workspace is ${env.WORKSPACE}"
@@ -127,3 +112,4 @@ pipeline {
         }
     }
 }
+
