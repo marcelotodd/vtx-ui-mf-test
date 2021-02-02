@@ -9,6 +9,9 @@ pipeline {
             '''
         }
     }
+    parameters {
+        string(name: 'GIT_COMMIT_SHA', description: 'The commit that will be deployed')
+    }
     environment {
         NODE_ENV = "qa"
         GIT_TRUNK_BRANCH = "master"
