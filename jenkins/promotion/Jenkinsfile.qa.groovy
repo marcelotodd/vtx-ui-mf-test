@@ -24,7 +24,7 @@ pipeline {
     stages {
         stage('Install dependencies') {
             steps {
-                sh "npm install"
+                sh "npm ci"
                 sh "npx cypress install"
             }
         }
