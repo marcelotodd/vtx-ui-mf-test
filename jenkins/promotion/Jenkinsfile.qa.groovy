@@ -9,6 +9,9 @@ pipeline {
             '''
         }
     }
+    parameters {
+       string(name: 'GIT_COMMIT_SHA', description: 'The commit that will be deployed', trim:true)
+    }
     environment {
         NODE_ENV = "qa"
         GIT_TRUNK_BRANCH = "master"
@@ -22,6 +25,11 @@ pipeline {
         parallelsAlwaysFailFast()
     }
     stages {
+        stage('Git Checkout') {
+            steps {
+                sh "git checkout ${GIT_COMMIT_SHA}; echo Git checkout return code: \$?"
+            }
+        }
         stage('Install dependencies') {
             steps {
                 sh "npm ci"
