@@ -27,7 +27,7 @@ pipeline {
     stages {
         stage('Git Checkout') {
             steps {
-                sh "git checkout ${GIT_COMMIT_SHA}; echo Git checkout return code: \$?"
+                sh script: 'if [ -z $GIT_COMMIT_SHA ]; then echo Git commit SHA was not provided as a parameter!; return 1;else git checkout ${GIT_COMMIT_SHA}; return $?;fi'
             }
         }
         stage('Install dependencies') {
