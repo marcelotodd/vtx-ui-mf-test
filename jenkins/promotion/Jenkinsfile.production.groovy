@@ -71,13 +71,13 @@ pipeline {
             steps {
                 script {
                     echo "Current workspace is ${env.WORKSPACE}"
-                    println "env.GIT_COMMIT=${env.GIT_COMMIT}"
+                    println "params.GIT_COMMIT_SHA=${params.GIT_COMMIT_SHA}"
                     println "S3_BUCKET=${S3_BUCKET}"
                     sh "export ${NODE_ENV}"
                     sh "printenv NODE_ENV"
 
                     withCredentials([usernamePassword(credentialsId: 'cicd-platform-ui-imd-credentials', passwordVariable: 'IMD_PASSWORD', usernameVariable: 'IMD_USERNAME')]) {
-                        def deployScript = """npm_config_registry=https://binrepo.vtxdev.net/artifactory/api/npm/vtx-ui npx @vertexinc/vtx-ui-tools-deployment deployMicroFrontend --gitCommitSha=${env.GIT_COMMIT} --importMapUsername=${IMD_USERNAME} --importMapPassword=${IMD_PASSWORD} --s3BucketName=${S3_BUCKET}""";
+                        def deployScript = """npm_config_registry=https://binrepo.vtxdev.net/artifactory/api/npm/vtx-ui npx @vertexinc/vtx-ui-tools-deployment deployMicroFrontend --gitCommitSha=${params.GIT_COMMIT_SHA} --importMapUsername=${IMD_USERNAME} --importMapPassword=${IMD_PASSWORD} --s3BucketName=${S3_BUCKET}""";
                         def status = sh(returnStatus: true, script: "${deployScript} > deployment_log.txt")
                         def output = readFile('deployment_log.txt').trim()
                         println output
