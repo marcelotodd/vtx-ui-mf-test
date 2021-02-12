@@ -9,21 +9,37 @@ interface OwnProps {
 
 const menu: IFirstLevelMenuItem[] = [
   {
-    title: "Home",
-    dataTestId: "home",
+    title: "Category 1",
+    dataTestId: "category1",
     icon: {
       typeName: "enterprise",
     },
     children: [
       {
+        title: "Link 1",
+        linkUrl: "/ui/test/category1/link1",
+        dataTestId: "category1/link1",
+      },
+      {
+        title: "Sub category 1",
+        dataTestId: "category1/subcategory1",
+        children: [
+          {
+            title: "Link 1",
+            linkUrl: "/ui/test/category1/subcategory1/link1",
+            dataTestId: "category1/subcategory1/link1",
+          },
+          {
+            title: "Link 2",
+            linkUrl: "/ui/test/category1/subcategory1/link2",
+            dataTestId: "category1/subcategory1/link2",
+          },
+        ],
+      },
+      {
         title: "Bad route",
         linkUrl: "/ui/blah",
         dataTestId: "home/bad-route",
-      },
-      {
-        title: "Sub route",
-        linkUrl: "/ui/test/blah",
-        dataTestId: "home/sub-route",
       },
     ],
   },
