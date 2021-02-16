@@ -13,4 +13,11 @@ const lifecycles = singleSpaReact({
   },
 });
 
-export const { bootstrap, mount, unmount } = lifecycles;
+export const { bootstrap, unmount } = lifecycles;
+export const mount = async (props) => {
+  const delay = parseInt(localStorage.getItem("vtx-ui-mf-test:delay"));
+  if (delay) {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+  lifecycles.mount(props);
+};
